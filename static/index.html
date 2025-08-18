@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Astrologer</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+        h1 { text-align: center; color: #2c3e50; }
+        form { display: flex; flex-direction: column; }
+        label { margin-top: 10px; font-weight: bold; }
+        input { padding: 8px; margin-top: 5px; border: 1px solid #ddd; border-radius: 4px; }
+        button { margin-top: 20px; padding: 10px; background: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #45a049; }
+        #results { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; display: none; background: #f9f9f9; }
+        #question-section { margin-top: 20px; padding: 15px; border: 1px solid #ddd; border-radius: 4px; display: none; background: #f9f9f9; }
+        #response { margin-top: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 4px; background: white; }
+    </style>
+</head>
+<body>
+    <h1>AI Astrologer</h1>
+    <form id="birth-form">
+        <label for="name">Name:</label>
+        <input type="text" id="name" required>
+        
+        <label for="birth_date">Birth Date (YYYY-MM-DD):</label>
+        <input type="date" id="birth_date" required>
+        
+        <label for="birth_time">Birth Time (HH:MM):</label>
+        <input type="time" id="birth_time" required>
+        
+        <label for="birth_place">Birth Place:</label>
+        <input type="text" id="birth_place" required>
+        
+        <button type="submit">Submit Birth Details</button>
+    </form>
+    
+    <div id="results">
+        <h2>Astrology Details</h2>
+        <p id="sun_sign"></p>
+        <p id="moon_sign"></p>
+        <p id="ascendant"></p>
+        <p id="traits"></p>
+    </div>
+    
+    <div id="question-section">
+        <h2>Ask a Question</h2>
+        <input type="text" id="message" placeholder="Type your question here" required>
+        <button id="ask-button">Ask</button>
+        <div id="response"></div>
+    </div>
+    
+    <script>
+        const birthForm = document.getElementById('birth-form');
+        const resultsDiv = document.getElementById('results');
+        const sunSignP = document.getElementById('sun_sign');
+        const moonSignP = document.getElementById('moon_sign');
+        const ascendantP = document.getElementById('ascendant');
+        const traitsP = document.getElementById('traits');
+        const questionSection = document.getElementById('question-section');
+        const messageInput = document.getElementById('message');
+        const askButton = document.getElementById('ask-button');
+        const responseDiv = document.getElementById('response');
+
+        birthForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const data = {
+                name: document.getElementById('name').value,
+                birth_date: document.getElementById('birth_date').value,
+                birth_time: document.getElementById('birth_time').value,
+                birth_place: document.getElementById('birth_place').value
+            };
+            
+            try {
+                const res = await fetch('/process', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    sunSignP.textContent = `Sun Sign: ${json.sun_sign}`;
+                    moonSignP.textContent = `Moon Sign: ${json.moon_sign}`;
+                    ascendantP.textContent = `Ascendant: ${json.ascendant}`;
+                    traitsP.textContent = `Traits: ${json.traits}`;
+                    resultsDiv.style.display = 'block';
+                    questionSection.style.display = 'block';
+                } else {
+                    alert(json.message);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        });
+
+        askButton.addEventListener('click', async () => {
+            const message = messageInput.value.trim();
+            if (!message) return;
+            
+            try {
+                const res = await fetch('/process_message', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const json = await res.json();
+                if (json.status === 'success') {
+                    responseDiv.textContent = json.message;
+                } else {
+                    alert(json.message);
+                }
+            } catch (err) {
+                alert('Error: ' + err.message);
+            }
+        });
+    </script>
+</body>
+</html>
