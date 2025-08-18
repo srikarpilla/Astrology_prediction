@@ -11,6 +11,7 @@ import torch.nn as nn
 import nltk
 from nltk.tokenize import word_tokenize
 import logging
+import time
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -82,34 +83,71 @@ horoscopes = {
 # Store birth details globally (for simplicity)
 user_data = {}
 
+# Geolocation cache and rate limit tracking
+geolocation_cache = {}
+last_geocode_time = 0
+
+# Common spelling corrections for Indian cities
+spelling_corrections = {
+    'vishakapatanam': 'Visakhapatnam, India',
+    'vizayanagaram': 'Vizianagaram, India',
+    'vishakapatnam': 'Visakhapatnam, India',
+    'vizianagram': 'Vizianagaram, India',
+    'bombay': 'Mumbai, India'
+}
+
 @app.route('/')
 def serve_index():
     return app.send_static_file('index.html')
 
 @app.route('/process', methods=['POST'])
 def process_birth_details():
+    global last_geocode_time
     try:
         data = request.get_json()
         name = data['name']
         birth_date = datetime.strptime(data['birth_date'], '%Y-%m-%d')
         birth_time = datetime.strptime(data['birth_time'], '%H:%M')
-        place = data['birth_place']
+        place = data['birth_place'].strip().lower()
         logger.debug(f"Processing birth details for {name}: {birth_date}, {birth_time}, {place}")
 
-        # Geolocation with timeout
-        geolocator = Nominatim(user_agent='ai_astrologer', timeout=5)
-        try:
-            location = geolocator.geocode(place)
-            if not location:
-                logger.error(f"Geolocation failed for place: {place}")
-                return jsonify({'status': 'error', 'message': 'Invalid place or geolocation service unavailable'})
-        except Exception as e:
-            logger.error(f"Geolocation error: {str(e)}")
-            return jsonify({'status': 'error', 'message': f'Geolocation failed: {str(e)}'})
+        # Check for spelling corrections
+        corrected_place = spelling_corrections.get(place, place)
+        if corrected_place != place:
+            logger.debug(f"Corrected place name: {place} -> {corrected_place}")
+            place = corrected_place
 
-        lat = location.latitude
-        lon = location.longitude
-        logger.debug(f"Geolocation: {place} -> Lat: {lat}, Lon: {lon}")
+        # Check geolocation cache
+        if place in geolocation_cache:
+            logger.debug(f"Using cached geolocation for {place}: {geolocation_cache[place]}")
+            lat, lon = geolocation_cache[place]
+        else:
+            # Respect Nominatim rate limits (1 request per second)
+            current_time = time.time()
+            if current_time - last_geocode_time < 1:
+                time.sleep(1 - (current_time - last_geocode_time))
+            last_geocode_time = time.time()
+
+            # Geolocation
+            geolocator = Nominatim(user_agent='ai_astrologer', timeout=10)
+            try:
+                location = geolocator.geocode(place, exactly_one=True)
+                if not location:
+                    # Fallback to country if specific place fails
+                    country = place.split(',')[-1].strip()
+                    logger.debug(f"Falling back to country: {country}")
+                    location = geolocator.geocode(country, exactly_one=True)
+                    if not location:
+                        logger.error(f"Geolocation failed for place: {place} and country: {country}")
+                        return jsonify({'status': 'error', 'message': f'Invalid place: "{place}". Try a specific location like "Visakhapatnam, India" or check spelling.'})
+                logger.debug(f"Geolocation result: {location.address}, Lat: {location.latitude}, Lon: {location.longitude}")
+                lat = location.latitude
+                lon = location.longitude
+                # Cache the result
+                geolocation_cache[place] = (lat, lon)
+            except Exception as e:
+                logger.error(f"Geolocation error: {str(e)}")
+                return jsonify({'status': 'error', 'message': f'Geolocation failed: {str(e)}. Try "Visakhapatnam, India" or check your internet connection.'})
 
         # Timezone
         tf = TimezoneFinder()
