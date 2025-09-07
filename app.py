@@ -12,6 +12,15 @@ import nltk
 from nltk.tokenize import word_tokenize
 import logging
 import time
+import os
+import urllib.request
+
+os.makedirs('ephe', exist_ok=True)
+ephe_files = ['sepl_18.se1', 'semo_18.se1', 'seas_18.se1']
+for file in ephe_files:
+    if not os.path.exists(f'ephe/{file}'):
+        logger.debug(f"Downloading {file}...")
+        urllib.request.urlretrieve(f'ftp://ftp.astro.com/pub/swisseph/ephe/{file}', f'ephe/{file}')
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -251,3 +260,4 @@ def process_message():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
