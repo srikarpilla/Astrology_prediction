@@ -13,30 +13,28 @@ from nltk.tokenize import word_tokenize
 import logging
 import time
 import os
-import urllib.request
 
-os.makedirs('ephe', exist_ok=True)
-ephe_files = ['sepl_18.se1', 'semo_18.se1', 'seas_18.se1']
-for file in ephe_files:
-    if not os.path.exists(f'ephe/{file}'):
-        logger.debug(f"Downloading {file}...")
-        urllib.request.urlretrieve(f'ftp://ftp.astro.com/pub/swisseph/ephe/{file}', f'ephe/{file}')
-
-# Configure logging
+# Configure logging at the very top
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-nltk.download('punkt', quiet=True)
-
-app = Flask(__name__, static_folder='static')
-CORS(app)
+# Set NLTK data path and pre-download punkt
+nltk.data.path.append(os.path.join(os.path.dirname(__file__), 'nltk_data'))
+try:
+    nltk.download('punkt', quiet=True)
+except Exception as e:
+    logger.error(f"Failed to download NLTK punkt: {str(e)}")
 
 # Set ephemeris path
 try:
-    swe.set_ephe_path('./ephe')
+    swe.set_ephe_path(os.path.join(os.path.dirname(__file__), 'ephe'))
+    logger.debug("Ephemeris path set successfully")
 except Exception as e:
     logger.error(f"Failed to set ephemeris path: {str(e)}")
     raise Exception("Ephemeris path './ephe' not found. Ensure ephemeris files are downloaded.")
+
+app = Flask(__name__, static_folder='static')
+CORS(app)
 
 # PyTorch model for personality traits
 class TraitModel(nn.Module):
@@ -260,4 +258,3 @@ def process_message():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
