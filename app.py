@@ -1,3 +1,5 @@
+import logging
+import os
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from datetime import datetime
@@ -10,15 +12,13 @@ import torch
 import torch.nn as nn
 import nltk
 from nltk.tokenize import word_tokenize
-import logging
 import time
-import os
 
-# Configure logging at the very top
+# Configure logging
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-# Set NLTK data path and pre-download punkt
+# Set NLTK data path
 nltk.data.path.append(os.path.join(os.path.dirname(__file__), 'nltk_data'))
 try:
     nltk.download('punkt', quiet=True)
@@ -162,6 +162,7 @@ def process_birth_details():
         if not tz_str:
             logger.error(f"Timezone lookup failed for lat: {lat}, lon: {lon}")
             return jsonify({'status': 'error', 'message': 'Could not determine timezone'})
+
         tz = pytz.timezone(tz_str)
 
         # Birth datetime
