@@ -8,8 +8,6 @@ import swisseph as swe
 from geopy.geocoders import Nominatim
 from timezonefinder import TimezoneFinder
 import pytz
-import torch
-import torch.nn as nn
 import nltk
 from nltk.tokenize import word_tokenize
 import time
@@ -35,38 +33,6 @@ except Exception as e:
 
 app = Flask(__name__, static_folder='static')
 CORS(app)
-
-# PyTorch model for personality traits
-class TraitModel(nn.Module):
-    def __init__(self):
-        super(TraitModel, self).__init__()
-        self.fc1 = nn.Linear(4, 10)
-        self.fc2 = nn.Linear(10, 5)  # Outputs: confidence, luck, creativity, health, love
-
-    def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        return torch.sigmoid(self.fc2(x))
-
-# Train dummy model
-def train_model():
-    try:
-        model = TraitModel()
-        inputs = torch.rand(10, 4) * torch.tensor([31, 12, 100, 24])
-        targets = torch.rand(10, 5)
-        optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
-        loss_fn = nn.MSELoss()
-        for _ in range(100):
-            preds = model(inputs)
-            loss = loss_fn(preds, targets)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-        return model
-    except Exception as e:
-        logger.error(f"Model training failed: {str(e)}")
-        raise
-
-model = train_model()
 
 # Sign mapper
 signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
@@ -140,7 +106,6 @@ def process_birth_details():
             try:
                 location = geolocator.geocode(place, exactly_one=True)
                 if not location:
-                    # Fallback to country if specific place fails
                     country = place.split(',')[-1].strip()
                     logger.debug(f"Falling back to country: {country}")
                     location = geolocator.geocode(country, exactly_one=True)
@@ -150,7 +115,6 @@ def process_birth_details():
                 logger.debug(f"Geolocation result: {location.address}, Lat: {location.latitude}, Lon: {location.longitude}")
                 lat = location.latitude
                 lon = location.longitude
-                # Cache the result
                 geolocation_cache[place] = (lat, lon)
             except Exception as e:
                 logger.error(f"Geolocation error: {str(e)}")
@@ -203,19 +167,8 @@ def process_birth_details():
         user_data['birth_date'] = birth_date
         user_data['birth_time'] = birth_time
 
-        # Predictive model
-        try:
-            year = birth_date.year % 100
-            month = birth_date.month
-            day = birth_date.day
-            hour = birth_time.hour
-            input_tensor = torch.tensor([[day, month, year, hour]], dtype=torch.float32)
-            traits = model(input_tensor)[0].tolist()
-            trait_names = ['Confidence', 'Luck', 'Creativity', 'Health', 'Love']
-            trait_str = ', '.join([f"{name}: {score:.2f}" for name, score in zip(trait_names, traits)])
-        except Exception as e:
-            logger.error(f"Trait model prediction failed: {str(e)}")
-            trait_str = "Traits calculation failed"
+        # Static traits (replacing PyTorch model)
+        trait_str = "Confidence: 0.80, Luck: 0.70, Creativity: 0.90, Health: 0.85, Love: 0.75"
 
         logger.debug(f"Success: Sun: {sun_sign}, Moon: {moon_sign}, Asc: {ascendant}, Traits: {trait_str}")
         return jsonify({
