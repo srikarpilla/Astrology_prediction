@@ -63,6 +63,15 @@ def index():
 def process_birth_details():
     try:
         data = request.json
+        logger.debug(f"Received JSON payload: {data}")
+        
+        # Validate required keys
+        required_keys = ['name', 'date', 'time', 'place']
+        missing_keys = [key for key in required_keys if key not in data or not data[key]]
+        if missing_keys:
+            logger.error(f"Missing required keys: {missing_keys}")
+            return jsonify({'status': 'error', 'message': f'Missing required fields: {", ".join(missing_keys)}'})
+        
         name = data['name']
         date = datetime.datetime.strptime(data['date'], '%Y-%m-%d')
         time = datetime.datetime.strptime(data['time'], '%H:%M')
@@ -114,7 +123,7 @@ def process_birth_details():
         })
     except Exception as e:
         logger.error(f"Error in /process: {str(e)}")
-        return jsonify({'status': 'error', 'message': f'Geolocation error: {str(e)}'})
+        return jsonify({'status': 'error', 'message': f'Error processing birth details: {str(e)}'})
 
 @app.route('/process_message', methods=['POST'])
 def process_message():
@@ -123,13 +132,13 @@ def process_message():
         logger.debug(f"Processing message: {message}")
         tokens = nltk.word_tokenize(message)
         response = ""
-        if 'horoscope' in tokens:
+        if 'horoscope' in tokens or 'day' in tokens:
             sun_sign = user_data.get('sun_sign', 'Aries')
             response += f"Your daily horoscope: {horoscopes.get(sun_sign, 'Please submit birth details first.')}"
         if 'love' in tokens:
             moon_sign = user_data.get('moon_sign', 'Aries')
             response += f" Love advice: Follow your {moon_sign} intuition."
-        if 'career' in tokens:
+        if 'career' in tokens or 'job' in tokens:
             sun_sign = user_data.get('sun_sign', 'Aries')
             response += f" Career tip: Leverage your {sun_sign} strengths."
         if 'mangal' in tokens or 'dosha' in tokens:
