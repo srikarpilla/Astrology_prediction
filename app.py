@@ -66,16 +66,16 @@ def process_birth_details():
         logger.debug(f"Received JSON payload: {data}")
         
         # Validate required keys
-        required_keys = ['name', 'date', 'time', 'place']
+        required_keys = ['name', 'birth_date', 'birth_time', 'birth_place']
         missing_keys = [key for key in required_keys if key not in data or not data[key]]
         if missing_keys:
             logger.error(f"Missing required keys: {missing_keys}")
             return jsonify({'status': 'error', 'message': f'Missing required fields: {", ".join(missing_keys)}'})
         
         name = data['name']
-        date = datetime.datetime.strptime(data['date'], '%Y-%m-%d')
-        time = datetime.datetime.strptime(data['time'], '%H:%M')
-        place = data['place'].lower().replace('vishakaptanam', 'Visakhapatnam, India')
+        date = datetime.datetime.strptime(data['birth_date'], '%Y-%m-%d')
+        time = datetime.datetime.strptime(data['birth_time'], '%H:%M')
+        place = data['birth_place'].lower().replace('vishakaptanam', 'Visakhapatnam, India')
         
         logger.debug(f"Processing birth details for {name}: {date}, {time}, {place}")
         
