@@ -1,8 +1,9 @@
-flask==2.3.2
+Flask==2.3.3
 flask-cors==4.0.0
-geopy==2.4.1
 timezonefinder==6.5.1
 pytz==2024.1
 nltk==3.8.1
-gunicorn==23.0.0
 pyswisseph==2.10.3.2
+geopy==2.4.1
+gunicorn==22.0.0
+h3==4.1.0
