@@ -6,9 +6,7 @@
     <title>AI Astrologer - Cosmic Insights</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* CSS Custom Properties for Theming */
         :root {
-            /* Cosmic Mode (Default) */
             --bg-primary: linear-gradient(135deg, #1a0933 0%, #2a1b4a 50%, #3b2a66 100%);
             --bg-card: rgba(255, 255, 255, 0.05);
             --border-card: rgba(255, 255, 255, 0.2);
@@ -53,8 +51,6 @@
             --error-bg: rgba(248, 113, 113, 0.3);
             --error-border: #f87171;
         }
-
-        /* Base Styles */
         body {
             background: var(--bg-primary);
             color: var(--text-primary);
@@ -63,8 +59,6 @@
             position: relative;
             overflow-x: hidden;
         }
-
-        /* Animated Stars (Visible in Cosmic Mode) */
         .stars {
             position: fixed;
             top: 0;
@@ -89,8 +83,6 @@
             0%, 100% { opacity: 0.7; }
             50% { opacity: 0.2; }
         }
-
-        /* Glassmorphism Card */
         .glass-card {
             background: var(--bg-card);
             backdrop-filter: blur(12px);
@@ -102,8 +94,6 @@
         .glass-card:hover {
             transform: translateY(-4px);
         }
-
-        /* Vibrant Title and Headings */
         h1 {
             font-size: 3rem;
             font-weight: 800;
@@ -121,8 +111,6 @@
             from { opacity: 0; transform: translateY(20px); }
             to { opacity: 1; transform: translateY(0); }
         }
-
-        /* Input Fields */
         input {
             background: var(--input-bg);
             border: 1px solid var(--input-border);
@@ -133,8 +121,6 @@
             border-color: var(--text-accent);
             box-shadow: 0 0 8px var(--button-hover-shadow);
         }
-
-        /* Buttons */
         button {
             background: var(--button-bg);
             border: none;
@@ -148,8 +134,6 @@
             transform: scale(1.05);
             box-shadow: var(--button-hover-shadow);
         }
-
-        /* Theme Toggle Button */
         .theme-toggle {
             position: fixed;
             top: 20px;
@@ -167,8 +151,6 @@
             opacity: 1;
             box-shadow: var(--button-hover-shadow);
         }
-
-        /* Results and Error Boxes */
         #results, #questionResult {
             background: var(--result-bg);
             border-radius: 12px;
@@ -180,8 +162,6 @@
             border-radius: 12px;
             padding: 16px;
         }
-
-        /* Responsive Adjustments */
         @media (max-width: 640px) {
             h1 { font-size: 2.25rem; }
             h2 { font-size: 1.5rem; }
@@ -192,10 +172,8 @@
     </style>
 </head>
 <body data-theme="cosmic">
-    <!-- Animated Stars (Cosmic Mode) -->
     <div class="stars">
         <script>
-            // Generate 100 random stars
             for (let i = 0; i < 100; i++) {
                 const star = document.createElement('div');
                 star.className = 'star';
@@ -208,22 +186,16 @@
             }
         </script>
     </div>
-
-    <!-- Theme Toggle -->
     <div class="theme-toggle">
         <button class="theme-btn active" data-theme="cosmic">Cosmic</button>
         <button class="theme-btn" data-theme="light">Light</button>
         <button class="theme-btn" data-theme="dark">Dark</button>
     </div>
-
     <div class="container mx-auto px-4 py-8 max-w-2xl">
-        <!-- Header -->
         <header class="text-center mb-12 animate-fadeIn">
             <h1>AI Astrologer</h1>
             <p class="text-lg mt-2">Unlock the secrets of the cosmos with personalized astrological insights.</p>
         </header>
-
-        <!-- Birth Details Form -->
         <section class="mb-12 glass-card p-8">
             <h2 class="mb-6 text-center">Enter Your Birth Details</h2>
             <form id="birthForm" class="space-y-6">
@@ -234,24 +206,23 @@
                            placeholder="Your Name">
                 </div>
                 <div>
-                    <label for="birth_date" class="block text-sm font-medium">Birth Date</label>
-                    <input type="date" id="birth_date" name="birth_date" required
+                    <label for="date" class="block text-sm font-medium">Birth Date</label>
+                    <input type="date" id="date" name="date" required
                            class="mt-1 block w-full px-4 py-3 rounded-md focus:outline-none">
                 </div>
                 <div>
-                    <label for="birth_time" class="block text-sm font-medium">Birth Time</label>
-                    <input type="time" id="birth_time" name="birth_time" required
+                    <label for="time" class="block text-sm font-medium">Birth Time</label>
+                    <input type="time" id="time" name="time" required
                            class="mt-1 block w-full px-4 py-3 rounded-md focus:outline-none">
                 </div>
                 <div>
-                    <label for="birth_place" class="block text-sm font-medium">Birth Place</label>
-                    <input type="text" id="birth_place" name="birth_place" required
+                    <label for="place" class="block text-sm font-medium">Birth Place</label>
+                    <input type="text" id="place" name="place" required
                            class="mt-1 block w-full px-4 py-3 rounded-md focus:outline-none"
                            placeholder="e.g., Visakhapatnam, India">
                 </div>
                 <button type="submit" class="w-full">Get Your Cosmic Insights</button>
             </form>
-            <!-- Loading and Results -->
             <div id="loading" class="hidden mt-6 text-center">Calculating your cosmic profile...</div>
             <div id="results" class="hidden mt-6">
                 <h3 class="text-xl font-semibold mb-4">Your Astrological Profile</h3>
@@ -262,8 +233,6 @@
             </div>
             <div id="error" class="hidden mt-6"></div>
         </section>
-
-        <!-- Question Form -->
         <section class="glass-card p-8">
             <h2 class="mb-6 text-center">Ask the Cosmos</h2>
             <form id="questionForm" class="space-y-6">
@@ -275,34 +244,26 @@
                 </div>
                 <button type="submit" class="w-full">Ask Now</button>
             </form>
-            <!-- Question Response -->
             <div id="questionLoading" class="hidden mt-6 text-center">Consulting the stars...</div>
             <div id="questionResult" class="hidden mt-6"></div>
             <div id="questionError" class="hidden mt-6"></div>
         </section>
-
-        <!-- Footer -->
         <footer class="text-center mt-12">
             <p>&copy; 2025 AI Astrologer. Powered by Cosmic Intelligence.</p>
         </footer>
     </div>
-
     <script>
-        // Theme Toggle Logic
         const themeButtons = document.querySelectorAll('.theme-btn');
         const body = document.body;
-
         themeButtons.forEach(button => {
             button.addEventListener('click', () => {
                 const theme = button.getAttribute('data-theme');
                 body.setAttribute('data-theme', theme);
                 themeButtons.forEach(btn => btn.classList.remove('active'));
                 button.classList.add('active');
-                localStorage.setItem('theme', theme); // Persist theme
+                localStorage.setItem('theme', theme);
             });
         });
-
-        // Load saved theme
         const savedTheme = localStorage.getItem('theme') || 'cosmic';
         body.setAttribute('data-theme', savedTheme);
         themeButtons.forEach(btn => {
@@ -310,24 +271,20 @@
                 btn.classList.add('active');
             }
         });
-
-        // Handle Birth Details Form Submission
         document.getElementById('birthForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
             const data = {
                 name: formData.get('name'),
-                birth_date: formData.get('birth_date'),
-                birth_time: formData.get('birth_time'),
-                birth_place: formData.get('birth_place')
+                date: formData.get('date'),
+                time: formData.get('time'),
+                place: formData.get('place')
             };
-
-            // Show loading, hide results/error
+            console.log('Sending birth details:', data); // Debug payload
             document.getElementById('loading').classList.remove('hidden');
             document.getElementById('results').classList.add('hidden');
             document.getElementById('error').classList.add('hidden');
-
             try {
                 const response = await fetch('/process', {
                     method: 'POST',
@@ -335,7 +292,6 @@
                     body: JSON.stringify(data)
                 });
                 const result = await response.json();
-
                 document.getElementById('loading').classList.add('hidden');
                 if (result.status === 'success') {
                     document.getElementById('sun_sign').textContent = `Sun Sign: ${result.sun_sign}`;
@@ -353,19 +309,15 @@
                 document.getElementById('error').classList.remove('hidden');
             }
         });
-
-        // Handle Question Form Submission
         document.getElementById('questionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
             const data = { message: formData.get('message') };
-
-            // Show loading, hide results/error
+            console.log('Sending message:', data); // Debug payload
             document.getElementById('questionLoading').classList.remove('hidden');
             document.getElementById('questionResult').classList.add('hidden');
             document.getElementById('questionError').classList.add('hidden');
-
             try {
                 const response = await fetch('/process_message', {
                     method: 'POST',
@@ -373,10 +325,9 @@
                     body: JSON.stringify(data)
                 });
                 const result = await response.json();
-
                 document.getElementById('questionLoading').classList.add('hidden');
                 if (result.status === 'success') {
-                    document.getElementById('questionResult').textContent = result.message;
+                    document.getElementById('questionResult').textContent = result.response;
                     document.getElementById('questionResult').classList.remove('hidden');
                 } else {
                     document.getElementById('questionError').textContent = result.message;
