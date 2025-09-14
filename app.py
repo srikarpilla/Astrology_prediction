@@ -11,7 +11,7 @@ import nltk
 import logging
 from retrying import retry
 
-app = Flask(__name__, static_folder='static')
+app = Flask(__name__, static_folder='static', template_folder='static')
 CORS(app)
 
 # Set up logging
