@@ -10,6 +10,7 @@ import os
 import nltk
 import logging
 from retrying import retry
+import time
 
 app = Flask(__name__, static_folder='static', template_folder='static')
 CORS(app)
@@ -50,9 +51,17 @@ def get_sign(longitude):
     signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
     return signs[int(longitude // 30)]
 
-@retry(stop_max_attempt_number=3, wait_fixed=2000)
+@retry(stop_max_attempt_number=5, wait_fixed=3000)
 def geocode_with_retry(place):
-    return geolocator.geocode(place, timeout=20)
+    try:
+        time.sleep(1)  # Respect Nominatim's 1 request/second limit
+        result = geolocator.geocode(place, timeout=30)
+        if not result:
+            raise ValueError("No results found for place")
+        return result
+    except Exception as e:
+        logger.error(f"Geocoding error: {str(e)}")
+        raise
 
 @app.route('/')
 def index():
@@ -70,14 +79,21 @@ def process_birth_details():
             logger.error(f"Missing required keys: {missing_keys}")
             return jsonify({'status': 'error', 'message': f'Missing required fields: {", ".join(missing_keys)}'})
         
-        name = data['name']
+        name = data['name'].strip()
         date = datetime.datetime.strptime(data['birth_date'], '%Y-%m-%d')
         time = datetime.datetime.strptime(data['birth_time'], '%H:%M')
-        place = data['birth_place'].lower().replace('vishakaptanam', 'Visakhapatnam, India')
+        place = data['birth_place'].strip()
+        if 'vishakaptanam' in place.lower():
+            place = 'Visakhapatnam, India'
         
         logger.debug(f"Processing birth details for {name}: {date}, {time}, {place}")
         
-        location = geocode_with_retry(place)
+        try:
+            location = geocode_with_retry(place)
+        except Exception as e:
+            logger.error(f"Geolocation failed after retries: {str(e)}")
+            return jsonify({'status': 'error', 'message': 'Geolocation service unavailable. Please try again later or use a specific city (e.g., Visakhapatnam, India).'})
+        
         if not location:
             logger.error("Geolocation error: Invalid place")
             return jsonify({'status': 'error', 'message': 'Invalid place. Try a specific city (e.g., Visakhapatnam, India).'})
