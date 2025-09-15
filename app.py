@@ -30,6 +30,11 @@ nltk.download('punkt')
 geolocator = Nominatim(user_agent="astrology_prediction_app_srikarpilla")
 tf = TimezoneFinder()
 
+# Geolocation cache
+geolocation_cache = {
+    'Visakhapatnam, India': {'latitude': 17.6868, 'longitude': 83.2185}
+}
+
 # Global data (replace with session in production)
 user_data = {}
 horoscopes = {
@@ -51,13 +56,22 @@ def get_sign(longitude):
     signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
     return signs[int(longitude // 30)]
 
-@retry(stop_max_attempt_number=5, wait_fixed=3000)
+@retry(stop_max_attempt_number=5, wait_fixed=5000)
 def geocode_with_retry(place):
     try:
+        # Check cache first
+        if place in geolocation_cache:
+            logger.debug(f"Using cached geolocation for {place}")
+            result = geolocation_cache[place]
+            return type('obj', (object,), {'latitude': result['latitude'], 'longitude': result['longitude']})
+        
         time.sleep(1)  # Respect Nominatim's 1 request/second limit
         result = geolocator.geocode(place, timeout=30)
         if not result:
             raise ValueError("No results found for place")
+        
+        # Cache result
+        geolocation_cache[place] = {'latitude': result.latitude, 'longitude': result.longitude}
         return result
     except Exception as e:
         logger.error(f"Geocoding error: {str(e)}")
@@ -80,8 +94,13 @@ def process_birth_details():
             return jsonify({'status': 'error', 'message': f'Missing required fields: {", ".join(missing_keys)}'})
         
         name = data['name'].strip()
-        date = datetime.datetime.strptime(data['birth_date'], '%Y-%m-%d')
-        time = datetime.datetime.strptime(data['birth_time'], '%H:%M')
+        try:
+            date = datetime.datetime.strptime(data['birth_date'], '%Y-%m-%d').date()
+            time = datetime.datetime.strptime(data['birth_time'], '%H:%M').time()
+        except ValueError as e:
+            logger.error(f"Invalid date or time format: {str(e)}")
+            return jsonify({'status': 'error', 'message': 'Invalid date (YYYY-MM-DD) or time (HH:MM) format'})
+        
         place = data['birth_place'].strip()
         if 'vishakaptanam' in place.lower():
             place = 'Visakhapatnam, India'
@@ -94,9 +113,6 @@ def process_birth_details():
             logger.error(f"Geolocation failed after retries: {str(e)}")
             return jsonify({'status': 'error', 'message': 'Geolocation service unavailable. Please try again later or use a specific city (e.g., Visakhapatnam, India).'})
         
-        if not location:
-            logger.error("Geolocation error: Invalid place")
-            return jsonify({'status': 'error', 'message': 'Invalid place. Try a specific city (e.g., Visakhapatnam, India).'})
         lat, lon = location.latitude, location.longitude
         
         tz = tf.timezone_at(lat=lat, lng=lon)
@@ -105,7 +121,7 @@ def process_birth_details():
             return jsonify({'status': 'error', 'message': 'Timezone not found'})
         
         tz_obj = pytz.timezone(tz)
-        local_dt = tz_obj.localize(datetime.datetime(date.year, date.month, date.day, time.hour, time.minute))
+        local_dt = datetime.datetime.combine(date, time, tzinfo=tz_obj)
         utc_dt = local_dt.astimezone(pytz.UTC)
         
         jd = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, utc_dt.hour + utc_dt.minute / 60.0)
