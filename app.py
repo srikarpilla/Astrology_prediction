@@ -11,6 +11,7 @@ import nltk
 import logging
 from retrying import retry
 import time
+import threading
 
 app = Flask(__name__, static_folder='static', template_folder='static')
 CORS(app)
@@ -30,10 +31,17 @@ nltk.download('punkt')
 geolocator = Nominatim(user_agent="astrology_prediction_app_srikarpilla")
 tf = TimezoneFinder()
 
-# Geolocation cache
+# Geolocation cache with common locations
 geolocation_cache = {
-    'Visakhapatnam, India': {'latitude': 17.6868, 'longitude': 83.2185}
+    'visakhapatnam, india': {'latitude': 17.6868, 'longitude': 83.2185},
+    'new york, usa': {'latitude': 40.7128, 'longitude': -74.0060},
+    'london, uk': {'latitude': 51.5074, 'longitude': -0.1278},
+    'delhi, india': {'latitude': 28.7041, 'longitude': 77.1025},
+    'mumbai, india': {'latitude': 19.0760, 'longitude': 72.8777}
 }
+
+# Lock for thread-safe cache updates
+cache_lock = threading.Lock()
 
 # Global data (replace with session in production)
 user_data = {}
@@ -54,27 +62,31 @@ horoscopes = {
 
 def get_sign(longitude):
     signs = ['Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo', 'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces']
+    if not isinstance(longitude, (int, float)):
+        logger.error(f"Invalid longitude type: {type(longitude)}, value: {longitude}")
+        raise ValueError(f"Expected float for longitude, got {type(longitude)}")
     return signs[int(longitude // 30)]
 
 @retry(stop_max_attempt_number=5, wait_fixed=5000)
 def geocode_with_retry(place):
     try:
-        # Check cache first
-        if place in geolocation_cache:
-            logger.debug(f"Using cached geolocation for {place}")
-            result = geolocation_cache[place]
-            return type('obj', (object,), {'latitude': result['latitude'], 'longitude': result['longitude']})
+        normalized_place = place.lower().strip()
+        with cache_lock:
+            if normalized_place in geolocation_cache:
+                logger.debug(f"Using cached geolocation for {place}")
+                result = geolocation_cache[normalized_place]
+                return type('obj', (object,), {'latitude': result['latitude'], 'longitude': result['longitude']})
         
-        time.sleep(1)  # Respect Nominatim's 1 request/second limit
+        time.sleep(1)
         result = geolocator.geocode(place, timeout=30)
         if not result:
-            raise ValueError("No results found for place")
+            raise ValueError(f"No results found for place: {place}")
         
-        # Cache result
-        geolocation_cache[place] = {'latitude': result.latitude, 'longitude': result.longitude}
+        with cache_lock:
+            geolocation_cache[normalized_place] = {'latitude': result.latitude, 'longitude': result.longitude}
         return result
     except Exception as e:
-        logger.error(f"Geocoding error: {str(e)}")
+        logger.error(f"Geocoding error for {place}: {str(e)}")
         raise
 
 @app.route('/')
@@ -105,19 +117,27 @@ def process_birth_details():
         if 'vishakaptanam' in place.lower():
             place = 'Visakhapatnam, India'
         
-        logger.debug(f"Processing birth details for {name}: {date}, {time}, {place}")
-        
-        try:
-            location = geocode_with_retry(place)
-        except Exception as e:
-            logger.error(f"Geolocation failed after retries: {str(e)}")
-            return jsonify({'status': 'error', 'message': 'Geolocation service unavailable. Please try again later or use a specific city (e.g., Visakhapatnam, India).'})
+        if ',' in place and all(p.strip().replace('-', '').replace('.', '').isdigit() for p in place.split(',')):
+            try:
+                lat, lon = map(float, place.split(','))
+                location = type('obj', (object,), {'latitude': lat, 'longitude': lon})
+                logger.debug(f"Using manual coordinates for {place}: lat={lat}, lon={lon}")
+            except ValueError as e:
+                logger.error(f"Invalid coordinates format: {place}")
+                return jsonify({'status': 'error', 'message': 'Invalid coordinates format (use lat,lon e.g., 17.6868,83.2185)'})
+        else:
+            logger.debug(f"Processing birth details for {name}: {date}, {time}, {place}")
+            try:
+                location = geocode_with_retry(place)
+            except Exception as e:
+                logger.error(f"Geolocation failed after retries: {str(e)}")
+                return jsonify({'status': 'error', 'message': 'Geolocation service unavailable. Try using coordinates (e.g., 17.6868,83.2185) or a specific city (e.g., Visakhapatnam, India).'})
         
         lat, lon = location.latitude, location.longitude
         
         tz = tf.timezone_at(lat=lat, lng=lon)
         if not tz:
-            logger.error("Timezone not found")
+            logger.error(f"Timezone not found for lat={lat}, lon={lon}")
             return jsonify({'status': 'error', 'message': 'Timezone not found'})
         
         tz_obj = pytz.timezone(tz)
@@ -126,9 +146,18 @@ def process_birth_details():
         
         jd = swe.julday(utc_dt.year, utc_dt.month, utc_dt.day, utc_dt.hour + utc_dt.minute / 60.0)
         
-        sun_lon = swe.calc_ut(jd, swe.SUN)[0]
-        moon_lon = swe.calc_ut(jd, swe.MOON)[0]
-        asc = swe.houses(jd, lat, lon, b'P')[0][0]
+        # Calculate planetary positions
+        sun_data = swe.calc_ut(jd, swe.SUN)
+        moon_data = swe.calc_ut(jd, swe.MOON)
+        houses_data = swe.houses(jd, lat, lon, b'P')
+        
+        logger.debug(f"Sun data: {sun_data}")
+        logger.debug(f"Moon data: {moon_data}")
+        logger.debug(f"Houses data: {houses_data}")
+        
+        sun_lon = sun_data[0]  # Longitude is first element
+        moon_lon = moon_data[0]
+        asc = houses_data[1][0]  # Ascendant is in ascmc[0]
         
         sun_sign = get_sign(sun_lon)
         moon_sign = get_sign(moon_lon)
